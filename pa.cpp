@@ -56,11 +56,12 @@ int main(void) {
 
 	srand(time(NULL));
 
-	Sine sin(1000);
-	Line lin(1, 0, 0.2);
+	Line line(1, 0, 0.1);
 	Delay delay(0.3, 0.8);
 	float out[FRAMES_PER_BUFFER];
 	float delay_out[FRAMES_PER_BUFFER];
+
+	Pulse pulse(100);
 
 	unsigned long count = 0;
 	while(1) {
@@ -68,11 +69,11 @@ int main(void) {
 
 			if (count%(int)(SAMPLE_RATE * 0.1) == 0) {
 				if (rand() % 4 == 0) {
-					lin.reset();
-					sin.freq(rand() % 5000 + 100);
+					line.reset();
+					pulse.freq(rand() % 100 + 10);
 				}
 			}
-			out[i] = (float) sin.val() * lin.val() * 0.4;
+			out[i] = (float) pulse.val() * line.val() * 0.4;
 
 			delay_out[i] = delay.in(out[i]*0.5);
 			out[i] += delay_out[i];
@@ -85,7 +86,7 @@ int main(void) {
 		}
 		e = Pa_WriteStream(stream, samples, FRAMES_PER_BUFFER);
 		//err(e);
-		if (e != paNoError) cout << "write error" << endl;
+		if (e != paNoError) cerr << "write error" << endl;
 	}
 
 	e = Pa_StopStream(stream);

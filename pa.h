@@ -54,6 +54,73 @@ class TSine {
 		}
 };
 
+class Pulse {
+	double _freq;
+	double _phase;
+public:
+	Pulse() { _phase = 0; }
+	Pulse(double f) {
+		_freq = f;
+		_phase = 0;
+	}
+	double val() {
+		_phase += _freq / SAMPLE_RATE;
+		return (double) (sin(2 * M_PI * _phase) > 0) ? 1.0 : -1.0;
+		/*
+		double out = sin(2 * M_PI * _phase);
+		if (out > 0) return (double) 1.0;
+		if (out < 0) return (double) -1.0;
+		return 0;
+		*/
+	}
+	Pulse &freq(double f) {
+		_freq = f;
+		return *this;
+	}
+	Pulse &phase(double p) {
+		_phase = 0;
+		return *this;
+	}
+	double freq() {
+		return _freq;
+	}
+};
+
+class Saw {
+	double _freq;
+	double _phase;
+public:
+	Saw() {}
+	Saw(double f) {
+		_freq = f;
+		_phase = 0;
+	}
+	double val() {
+		_phase += _freq / SAMPLE_RATE;
+		_phase = (_phase > 1) ? -1 : _phase;
+		return _phase;
+	}
+	Saw &freq(double f) {
+		_freq = f;
+		return *this;
+	}
+	Saw &phase(double p) {
+		_phase = 0;
+		return *this;
+	}
+	double freq() {
+		return _freq;
+	}
+};
+
+class Noise {
+public:
+	Noise() {};
+	double val() {
+		return (double) rand() / (RAND_MAX * 0.5) - 1.0;
+	}
+};
+
 class Line {
 	double from;
 	double to;
