@@ -6,6 +6,39 @@
 #define SAMPLE_RATE (48000)
 #define FRAMES_PER_BUFFER (512)
 
+class Filter {
+	double cutoff;
+	double resonance;
+	double a1, a2, a3, b1, b2, c, in1, in2, out, out1, out2;
+public:
+	Filter(double cf, double res) {
+		cutoff = cf;
+		resonance = res;
+		in1 = 0;
+		in2 = 0;
+		out1 = 0;
+		out2 = 0;
+	}
+	double lowpass(double in) {
+		c = 1.0 / tan(M_PI * cutoff / SAMPLE_RATE);
+		a1 = 1.0 / ( 1.0 + resonance * c + c * c);
+		a2 = 2 * a1;
+		a3 = a1;
+		b1 = 2.0 * ( 1.0 - c * c) * a1;
+		b2 = ( 1.0 - resonance * c + c * c) * a1;
+
+		out = a1*in + a2*in1 + a3*in2 - b1*out1 - b2*out2;
+
+		in2 = in1;
+		in1 = in;
+		out2 = out1;
+		out1 = out;
+
+		return out;
+	}
+
+};
+
 class Sine {
 	double _freq;
 	double _phase;
