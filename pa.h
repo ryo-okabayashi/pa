@@ -185,6 +185,29 @@ public:
 		length = dur * SAMPLE_RATE;
 		phase = 0;
 	}
+	bool done() {
+		return (phase > length);
+	}
+};
+
+class AR {
+	Line a;
+	Line r;
+public:
+	AR(double from, double to1, double dur1, double to2, double dur2) {
+		a.set(from, to1, dur1);
+		r.set(to1, to2, dur2);
+	}
+	double val() {
+		if (a.done()) {
+			return r.val();
+		}
+		return a.val();
+	}
+	void reset() {
+		a.reset();
+		r.reset();
+	}
 };
 
 class Delay {
