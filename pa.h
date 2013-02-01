@@ -36,7 +36,10 @@ public:
 
 		return out;
 	}
-
+	Filter &set_cutoff(double co) {
+		cutoff = co;
+		return *this;
+	}
 };
 
 class Sine {

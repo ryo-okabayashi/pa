@@ -54,31 +54,47 @@ int main(void) {
 	e = Pa_StartStream(stream);
 	err(e);
 
-	srand(time(NULL));
+	//srand(time(NULL));
 
-	Line line(1, 0, 0.1);
-	Delay delay(0.3, 0.8);
 	float out[FRAMES_PER_BUFFER];
-	float delay_out[FRAMES_PER_BUFFER];
 
-	Pulse pulse(100);
+	Saw saw(100);
+	Filter filter(200, 0.5);
+	AR ar(0, 1, 0.01, 0, 0.19);
+	int seed = 0;
+
+	Sine sine(100);
+	AR ar2(0, 1, 0.01, 0, 0.02);
 
 	unsigned long count = 0;
 	while(1) {
 		for (i = 0; i < FRAMES_PER_BUFFER; i++) {
 
+			if (count % (int)(SAMPLE_RATE * 12.8) == 0) {
+				seed++;
+				cout << seed << endl;
+			}
+
+			if (count % (int)(SAMPLE_RATE * 0.8) == 0) {
+				srand(seed);
+			}
+
+			if (count%(int)(SAMPLE_RATE * 0.2) == 0) {
+				saw.freq(rand() % 100 + 50);
+				ar.reset();
+			}
 			if (count%(int)(SAMPLE_RATE * 0.1) == 0) {
-				if (rand() % 4 == 0) {
-					line.reset();
-					pulse.freq(rand() % 100 + 10);
+				if (rand()%2==0) {
+					sine.freq(rand()%7000 + 500);
+					ar2.reset();
 				}
 			}
-			out[i] = (float) pulse.val() * line.val() * 0.4;
+			out[i] = (float) sine.val() * ar2.val() * 0.2;
+			out[i] += (float) filter.lowpass(saw.val()) * ar.val() * 0.3;
 
-			delay_out[i] = delay.in(out[i]*0.5);
-			out[i] += delay_out[i];
-
-			if (out[i] > 1 || out[i] < -1) cerr << "clip!" << endl;
+			//if (out[i] > 1 || out[i] < -1) cerr << "clip!" << endl;
+			if (out[i] > 1) out[i] = 1;
+			if (out[i] < -1) out[i] = -1;
 			samples[i][0] = out[i];
 			samples[i][1] = out[i];
 
