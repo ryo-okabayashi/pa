@@ -47,6 +47,7 @@ class Sine {
 	double _phase;
 public:
 	Sine() {
+		_phase = 0;
 	}
 	Sine(double f) {
 		_freq = f;
@@ -165,6 +166,11 @@ class Line {
 	int phase;
 public:
 	Line() {
+		from = 0;
+		to = 0;
+		dur = 0;
+		length = 0;
+		phase = 0;
 	}
 	Line(double f, double t, double d) {
 		from = f;
