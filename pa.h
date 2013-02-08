@@ -2,9 +2,28 @@
 #include <math.h>
 #include "portaudio.h"
 #include <cstdlib>
+#include <sndfile.hh>
 
 #define SAMPLE_RATE (48000)
 #define FRAMES_PER_BUFFER (512)
+
+class Player {
+	float *buffer;
+	int frames;
+	int phase;
+public:
+	Player(const char *filename) {
+		SndfileHandle in(filename, SFM_READ);
+		frames = in.frames() * in.channels();
+		buffer = new float[frames];
+		in.readf(buffer, frames);
+		phase = 0;
+	}
+	float out() {
+		if (phase == frames) phase = 0;
+		return buffer[phase++];
+	}
+};
 
 class Filter {
 	double cutoff;

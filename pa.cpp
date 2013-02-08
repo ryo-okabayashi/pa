@@ -68,72 +68,14 @@ int main(void) {
 
 	float out[FRAMES_PER_BUFFER];
 
-	Saw saw(100);
-	Filter filter(200, 0.5);
-	AR ar(0, 1, 0.01, 0, 0.19);
-	int seed = 0;
-
-	Pulse pulse(100);
-	AR ar2(0, 1, 0.01, 0, 0.02);
-
-	Sine kick;
-	Line kick_freq(500, 100, 0.05);
-	Line kick_env(1, 0, 0.2);
-
-	Noise snare;
-	Line snare_env;
-
-	Sine hh(9000);
-	Line hh_env(1, 0, 0.01);
+	Player player("a.wav");
 
 	unsigned long count = 0;
 	while(1) {
 		for (i = 0; i < FRAMES_PER_BUFFER; i++) {
 
-			out[i] = 0;
-
-			if (count%(int)(SAMPLE_RATE * 0.8) == (SAMPLE_RATE * 0.4)) {
-				snare_env.set(1, 0, 0.05);
-			}
-			out[i] += snare.val() * snare_env.val() * 0.2;
-
-			if (count%(int)(SAMPLE_RATE * 0.8) == 0) {
-				kick_freq.reset();
-				kick_env.reset();
-			}
-			out[i] += kick.freq(kick_freq.val()).val() * kick_env.val() * 0.2;
-
-			if (count % (int)(SAMPLE_RATE * 12.8) == 0) {
-				seed++;
-				cout << seed << endl;
-			}
-
-			if (count % (int)(SAMPLE_RATE * 0.8) == 0) {
-				srand(seed);
-			}
-
-			if (count%(int)(SAMPLE_RATE * 0.2) == 0) {
-				saw.freq(rand() % 100 + 50);
-				ar.reset();
-			}
-			if (count%(int)(SAMPLE_RATE * 0.1) == 0) {
-				if (rand()%2==0) {
-					pulse.freq(rand()%1000 + 500);
-					ar2.reset();
-				}
-				if (rand()%2==0) {
-					hh_env.reset();
-				}
-			}
-			out[i] += (float) hh.val() * hh_env.val() * 0.2;
-			out[i] += (float) filter.lowpass(saw.val()) * ar.val() * 0.3;
-			out[i] += (float) pulse.val() * ar2.val() * 0.1;
-
-			//if (out[i] > 1 || out[i] < -1) cerr << "clip!" << endl;
-			if (out[i] > 1) out[i] = 1;
-			if (out[i] < -1) out[i] = -1;
-			samples[i][0] = out[i];
-			samples[i][1] = out[i];
+			samples[i][0] = player.out();
+			samples[i][1] = player.out();
 
 			count++;
 		}
