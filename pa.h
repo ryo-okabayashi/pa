@@ -7,6 +7,8 @@
 #define SAMPLE_RATE (48000)
 #define FRAMES_PER_BUFFER (512)
 
+using namespace std;
+
 class Player {
 	float *buffer;
 	int frames;
@@ -18,10 +20,21 @@ public:
 		buffer = new float[frames];
 		in.readf(buffer, frames);
 		phase = 0;
+
+		cout << "file load: " << filename
+			<< " " << in.frames() / SAMPLE_RATE << " sec." << endl;
 	}
 	float out() {
 		if (phase == frames) phase = 0;
 		return buffer[phase++];
+	}
+	Player &set_phase(int i) {
+		if (i > frames) i = frames;
+		phase = i;
+		return *this;
+	}
+	int get_frames() {
+		return frames;
 	}
 };
 
@@ -238,6 +251,41 @@ public:
 	}
 };
 
+class ASR {
+	Line a;
+	Line s;
+	Line r;
+public:
+	ASR() {}
+	ASR(double from, double to1, double dur1, double to2, double dur2, double to3, double dur3) {
+		a.set(from, to1, dur1);
+		s.set(to1, to2, dur2);
+		r.set(to2, to3, dur3);
+	}
+	double val() {
+		if (a.done()) {
+			if (s.done()) {
+				return r.val();
+			}
+			return s.val();
+		}
+		return a.val();
+	}
+	void reset() {
+		a.reset();
+		s.reset();
+		r.reset();
+	}
+	void set(double from, double to1, double dur1, double to2, double dur2, double to3, double dur3) {
+		a.set(from, to1, dur1);
+		s.set(to1, to2, dur2);
+		r.set(to2, to3, dur3);
+	}
+	bool done() {
+		return (r.done());
+	}
+};
+
 class Delay {
 	int in_index;
 	int out_index;
@@ -253,7 +301,7 @@ public:
 		}
 		in_index = 0;
 	}
-	float in(float in) {
+	float io(float in) {
 
 		if (in_index >= SAMPLE_RATE) in_index = 0;
 

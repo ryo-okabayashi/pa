@@ -41,6 +41,7 @@ int main(void) {
 	}
 
 	outputParameters.device = Pa_GetDefaultOutputDevice();
+	outputParameters.device = 6;
 	if (outputParameters.device == paNoDevice) {
 		cerr << "Error: No default output device." << endl;
 		exit(0);
@@ -64,18 +65,31 @@ int main(void) {
 	e = Pa_StartStream(stream);
 	err(e);
 
-	//srand(time(NULL));
+	srand(time(NULL));
 
-	float out[FRAMES_PER_BUFFER];
+	float out[FRAMES_PER_BUFFER][2];
+	float amp;
 
-	Player player("a.wav");
+	Player player("d.wav");
+	ASR asr;
+	Delay delay0(0.3, 0.3);
+	Delay delay1(0.35, 0.3);
 
 	unsigned long count = 0;
 	while(1) {
 		for (i = 0; i < FRAMES_PER_BUFFER; i++) {
 
-			samples[i][0] = player.out();
-			samples[i][1] = player.out();
+			if (asr.done()) {
+				player.set_phase(rand()%player.get_frames());
+				asr.set(0, 1, 0.001, 1, rand()%20*0.01+0.01, 0, 0.001);
+			}
+
+			amp = asr.val();
+			out[i][0] = player.out() * amp;
+			out[i][1] = player.out() * amp;
+
+			samples[i][0] = out[i][0] + delay0.io(out[i][0]*0.2);
+			samples[i][1] = out[i][1] + delay1.io(out[i][1]*0.2);
 
 			count++;
 		}
