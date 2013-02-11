@@ -9,32 +9,45 @@
 
 using namespace std;
 
-class Player {
+class Play {
 	float *buffer;
 	int frames;
 	int phase;
 public:
-	Player(const char *filename) {
-		SndfileHandle in(filename, SFM_READ);
-		frames = in.frames() * in.channels();
+	Play(const char *filename) {
+		SndfileHandle infile(filename, SFM_READ);
+		frames = infile.frames() * infile.channels();
 		buffer = new float[frames];
-		in.readf(buffer, frames);
+		infile.readf(buffer, frames);
 		phase = 0;
 
 		cout << "file load: " << filename
-			<< " " << in.frames() / SAMPLE_RATE << " sec." << endl;
+			<< " " << infile.frames() / SAMPLE_RATE << " sec." << endl;
 	}
 	float out() {
 		if (phase == frames) phase = 0;
 		return buffer[phase++];
 	}
-	Player &set_phase(int i) {
+	Play &set_phase(int i) {
 		if (i > frames) i = frames;
 		phase = i;
 		return *this;
 	}
 	int get_frames() {
 		return frames;
+	}
+};
+
+class Record {
+	SndfileHandle outfile;
+public:
+	Record() {}
+	void prepare() {
+		const char *filename = "out.wav";
+		outfile = SndfileHandle(filename, SFM_WRITE, SF_FORMAT_WAV | SF_FORMAT_FLOAT, 2, SAMPLE_RATE);
+	}
+	void write(float *f) {
+		outfile.write(f, FRAMES_PER_BUFFER*2);
 	}
 };
 
