@@ -1,5 +1,8 @@
 #include "pa.h"
+#include "fltk.h"
 #include <signal.h>
+#include <pthread.h>
+#include <unistd.h>
 using namespace std;
 
 #define REC 1
@@ -23,6 +26,17 @@ void signal_catch(int sig) {
 int main(void) {
 
 	signal(SIGINT, signal_catch);
+
+	// GUI
+	pthread_t thread;
+	pthread_attr_t thread_attr;
+	pthread_attr_init(&thread_attr);
+	pthread_attr_setdetachstate(&thread_attr, PTHREAD_CREATE_DETACHED);
+	if(pthread_create(&thread, &thread_attr, thread1, NULL) != 0) {
+		perror("pthrad create error");
+	}
+	pthread_join(thread, NULL);
+
 	PaStreamParameters outputParameters;
 	PaStream *stream;
 	PaError e;
@@ -34,6 +48,7 @@ int main(void) {
 	err(e);
 
 	// devices
+	/*
 	int numDevices = Pa_GetDeviceCount();
 	const PaDeviceInfo *deviceInfo;
 	for (int i = 0; i < numDevices; i++) {
@@ -41,6 +56,7 @@ int main(void) {
 		const PaHostApiInfo *hostInfo = Pa_GetHostApiInfo( deviceInfo->hostApi );
 		cout << i << ": " << hostInfo->name << endl;
 	}
+	*/
 
 	outputParameters.device = Pa_GetDefaultOutputDevice();
 	if (outputParameters.device == paNoDevice) {
@@ -79,7 +95,7 @@ int main(void) {
 	Sine sine(440);
 
 	unsigned long count = 0;
-	while(1) {
+	while(!exit_flg) {
 		if (REC) rec_i = 0;
 		for (i = 0; i < FRAMES_PER_BUFFER; i++) {
 
@@ -106,6 +122,8 @@ int main(void) {
 	err(e);
 
 	Pa_Terminate();
+
+	pthread_exit(NULL);
 
 	return 0;
 }
