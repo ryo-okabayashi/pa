@@ -12,7 +12,7 @@ using namespace std;
 class Play {
 	float *buffer;
 	int frames;
-	int phase;
+	float phase, speed;
 public:
 	Play(const char *filename) {
 		SndfileHandle infile(filename, SFM_READ);
@@ -20,17 +20,25 @@ public:
 		buffer = new float[frames];
 		infile.readf(buffer, frames);
 		phase = 0;
+		speed = 1.0;
 
 		cout << "file load: " << filename
 			<< " " << infile.frames() / SAMPLE_RATE << " sec." << endl;
 	}
 	float out() {
-		if (phase == frames) phase = 0;
-		return buffer[phase++];
+		if (phase >= frames) phase = 0;
+		else phase = phase + speed;
+		if (phase < 0) phase = frames - 1;
+
+		return buffer[(int)phase];
 	}
 	Play &set_phase(int i) {
 		if (i > frames) i = frames;
 		phase = i;
+		return *this;
+	}
+	Play &set_speed(float f) {
+		speed = f;
 		return *this;
 	}
 	int get_frames() {
