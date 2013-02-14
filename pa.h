@@ -11,8 +11,8 @@ using namespace std;
 
 class Play {
 	float *buffer;
-	int frames;
-	float phase, speed;
+	int frames, m;
+	double phase, speed, delta;
 public:
 	Play(const char *filename) {
 		SndfileHandle infile(filename, SFM_READ);
@@ -30,7 +30,13 @@ public:
 		else phase = phase + speed;
 		if (phase < 0) phase = frames - 1;
 
-		return buffer[(int)phase];
+		// return buffer[(int)phase];
+
+		// 線形補間
+		m = (int) phase;
+		delta = phase - (double) m;
+		return delta * buffer[m+1] + (1.0 - delta) * buffer[m];
+
 	}
 	Play &set_phase(int i) {
 		if (i > frames) i = frames;
