@@ -5,7 +5,7 @@
 #include <sndfile.hh>
 
 #define SAMPLE_RATE (48000)
-#define FRAMES_PER_BUFFER (256)
+#define FRAMES_PER_BUFFER (512)
 
 using namespace std;
 
@@ -248,6 +248,13 @@ public:
 	}
 	void set(double f, double t, double d) {
 		from = f;
+		to = t;
+		dur = d;
+		length = dur * SAMPLE_RATE;
+		phase = 0;
+	}
+	void set(double t, double d) {
+		from = val();
 		to = t;
 		dur = d;
 		length = dur * SAMPLE_RATE;
