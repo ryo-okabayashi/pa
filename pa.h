@@ -5,7 +5,7 @@
 #include <sndfile.hh>
 
 #define SAMPLE_RATE (48000)
-#define FRAMES_PER_BUFFER (512)
+#define FRAMES_PER_BUFFER (256)
 
 using namespace std;
 
@@ -314,17 +314,16 @@ public:
 };
 
 class Delay {
-	int in_index;
-	int out_index;
+	int in_index, m;
+	double out_index, delta;
 	float buffer[SAMPLE_RATE];
-	float delay_time;
-	float feedback;
+	float delay_time, feedback, output;
 public:
 	Delay(float dt, float fb) {
 		delay_time = dt;
 		feedback = fb;
 		for (int i = 0; i < SAMPLE_RATE; i++) {
-			buffer[i] = 0;
+			buffer[i] = 0.0;
 		}
 		in_index = 0;
 	}
@@ -332,12 +331,21 @@ public:
 
 		if (in_index >= SAMPLE_RATE) in_index = 0;
 
-		out_index = in_index - (int) (SAMPLE_RATE * delay_time);
-		if (out_index < 0) out_index = SAMPLE_RATE + out_index;
+		out_index = in_index - ((double)SAMPLE_RATE * delay_time);
+		if (out_index < 0) out_index = (double)(SAMPLE_RATE-1) + out_index;
 
-		buffer[in_index] = buffer[out_index] * feedback + in;
+		// 線形補間
+		m = (int) out_index;
+		delta = out_index - (double) m;
+		output = (float) (delta * buffer[m+1] + (1.0 - delta) * buffer[m]);
+
+		buffer[in_index] = output * feedback + in;
 
 		in_index++;
-		return buffer[out_index];
+		return output;
+	}
+	Delay &set_delay_time(float f) {
+		delay_time = f;
+		return *this;
 	}
 };
