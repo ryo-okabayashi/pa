@@ -3,9 +3,53 @@
 #include <signal.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <lo/lo.h>
 using namespace std;
 
+#define OSC_PORT "7770"
 #define REC 1
+
+unsigned long count = 0;
+Record rec;
+
+// synth
+Sine sine(440);
+
+// pa callback
+static int paCallback( const void *inputBuffer, void *outputBuffer,
+	unsigned long framesPerBuffer,
+	const PaStreamCallbackTimeInfo* timeInfo,
+	PaStreamCallbackFlags statusFlags,
+	void *userData )
+{
+	float *out = (float*)outputBuffer;
+	float left, right;
+	float rec_samples[FRAMES_PER_BUFFER*2];
+	unsigned int i, rec_i = 0;
+	(void) inputBuffer; /* Prevent unused variable warning. */
+	for( i=0; i<framesPerBuffer; i++ )
+	{
+		left = sine.val() * 0.5;
+		right = left;
+
+		*out++ = left;
+		*out++ = right;
+		count++;
+		if (REC) {
+			rec_samples[rec_i++] = left;
+			rec_samples[rec_i++] = right;
+		}
+	}
+	if (REC) rec.write(rec_samples);
+	return 0;
+}
+
+// OSC
+static int osc(const char *path, const char *types, lo_arg **argv, int argc, void *data, void *user_data)
+{
+	sine.freq((float)argv[0]->i);
+	return 0;
+}
 
 void err(PaError pa_e) {
 	if (pa_e != paNoError) {
@@ -23,46 +67,11 @@ void signal_catch(int sig) {
 	exit(0);
 } 
 
-Record rec;
-unsigned long count = 0;
-
-Sine sine(440);
-AR ar(0, 1, 0.001, 0, 0.5);
-Line line(0.1, 0.9, 30);
-
-static int paCallback( const void *inputBuffer, void *outputBuffer,
-	unsigned long framesPerBuffer,
-	const PaStreamCallbackTimeInfo* timeInfo,
-	PaStreamCallbackFlags statusFlags,
-	void *userData )
-{
-	float *out = (float*)outputBuffer;
-	float left, right;
-	float rec_samples[FRAMES_PER_BUFFER*2];
-	unsigned int i, rec_i = 0;
-	(void) inputBuffer; /* Prevent unused variable warning. */
-	for( i=0; i<framesPerBuffer; i++ )
-	{
-		if (count%(int)(SAMPLE_RATE*0.2)==0) {
-			sine.freq(rand()%1000+100);
-			ar.reset();
-		}
-		left = sine.val() * ar.val() * 0.5;
-		right = left;
-
-		*out++ = left;
-		*out++ = right;
-		count++;
-		if (REC) {
-			rec_samples[rec_i++] = left;
-			rec_samples[rec_i++] = right;
-		}
-	}
-	if (REC) rec.write(rec_samples);
-	return 0;
-}
-
 int main(void) {
+
+	PaStreamParameters outputParameters;
+	PaStream *stream;
+	PaError e;
 
 	signal(SIGINT, signal_catch);
 
@@ -78,9 +87,11 @@ int main(void) {
 
 	if (REC) rec.prepare();
 
-	PaStreamParameters outputParameters;
-	PaStream *stream;
-	PaError e;
+	// OSC
+	lo_server_thread server;
+	server = lo_server_thread_new(OSC_PORT, NULL);
+	lo_server_thread_add_method(server, "/pa", "i", osc, NULL);
+	lo_server_thread_start(server);
 
 	e = Pa_Initialize();
 	err(e);
@@ -119,8 +130,6 @@ int main(void) {
 
 	e = Pa_StartStream(stream);
 	err(e);
-
-	srand(time(NULL));
 
 	pthread_exit(NULL);
 
