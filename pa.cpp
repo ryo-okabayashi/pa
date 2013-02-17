@@ -39,7 +39,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	float *out = (float*)outputBuffer;
 	float left, right;
 	float rec_samples[FRAMES_PER_BUFFER*2];
-	unsigned int i, rec_i;
+	unsigned int i, rec_i = 0;
 	(void) inputBuffer; /* Prevent unused variable warning. */
 	for( i=0; i<framesPerBuffer; i++ )
 	{
@@ -81,9 +81,6 @@ int main(void) {
 	PaStreamParameters outputParameters;
 	PaStream *stream;
 	PaError e;
-
-	int i;
-	float samples[FRAMES_PER_BUFFER][2];
 
 	e = Pa_Initialize();
 	err(e);
