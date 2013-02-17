@@ -21,6 +21,45 @@ void signal_catch(int sig) {
 	cout << "signal:" << sig << endl;
 	cout << "terminated." << endl;
 	exit(0);
+} 
+
+Record rec;
+unsigned long count = 0;
+
+Sine sine(440);
+AR ar(0, 1, 0.001, 0, 0.5);
+Line line(0.1, 0.9, 30);
+
+static int paCallback( const void *inputBuffer, void *outputBuffer,
+	unsigned long framesPerBuffer,
+	const PaStreamCallbackTimeInfo* timeInfo,
+	PaStreamCallbackFlags statusFlags,
+	void *userData )
+{
+	float *out = (float*)outputBuffer;
+	float left, right;
+	float rec_samples[FRAMES_PER_BUFFER*2];
+	unsigned int i, rec_i;
+	(void) inputBuffer; /* Prevent unused variable warning. */
+	for( i=0; i<framesPerBuffer; i++ )
+	{
+		if (count%(int)(SAMPLE_RATE*0.2)==0) {
+			sine.freq(rand()%1000+100);
+			ar.reset();
+		}
+		left = sine.val() * ar.val() * 0.5;
+		right = left;
+
+		*out++ = left;
+		*out++ = right;
+		count++;
+		if (REC) {
+			rec_samples[rec_i++] = left;
+			rec_samples[rec_i++] = right;
+		}
+	}
+	if (REC) rec.write(rec_samples);
+	return 0;
 }
 
 int main(void) {
@@ -36,6 +75,8 @@ int main(void) {
 		perror("pthrad create error");
 	}
 	pthread_join(thread, NULL);
+
+	if (REC) rec.prepare();
 
 	PaStreamParameters outputParameters;
 	PaStream *stream;
@@ -75,7 +116,7 @@ int main(void) {
 			SAMPLE_RATE,
 			FRAMES_PER_BUFFER,
 			paClipOff,
-			NULL,
+			paCallback,
 			NULL );
 	err(e);
 
@@ -84,36 +125,7 @@ int main(void) {
 
 	srand(time(NULL));
 
-	// record
-	float rec_samples[FRAMES_PER_BUFFER*2];
-	int rec_i;
-	Record rec;
-	if (REC) {
-		rec.prepare();
-	}
-
-	Sine sine(440);
-
-	unsigned long count = 0;
-	while(!exit_flg) {
-		if (REC) rec_i = 0;
-		for (i = 0; i < FRAMES_PER_BUFFER; i++) {
-
-			samples[i][0] = sine.val() * 0.5;
-			samples[i][1] = samples[i][0];
-
-			if (REC) {
-				rec_samples[rec_i++] = samples[i][0];
-				rec_samples[rec_i++] = samples[i][1];
-			}
-
-			count++;
-		}
-		if (REC) rec.write(rec_samples);
-		e = Pa_WriteStream(stream, samples, FRAMES_PER_BUFFER);
-		//err(e);
-		if (e != paNoError) cerr << "write error" << endl;
-	}
+	pthread_exit(NULL);
 
 	e = Pa_StopStream(stream);
 	err(e);
@@ -122,8 +134,6 @@ int main(void) {
 	err(e);
 
 	Pa_Terminate();
-
-	pthread_exit(NULL);
 
 	return 0;
 }

@@ -14,7 +14,7 @@ void exit_callback(Widget *, void *) {
 
 void* thread1(void *args)
 {
-	Window *window = new Window(10, 10, 70, 40);
+	Window *window = new Window(70, 40);
 	window->begin();
 
 	Button exit_button(10, 10, 50, 20, "exit.");
