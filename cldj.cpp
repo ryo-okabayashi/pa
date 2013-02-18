@@ -67,8 +67,8 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		}
 	}
 	if (count%SAMPLE_RATE==0) {
-		lo_send(address, "/1/fader3", "f", deck0.get_position());
-		lo_send(address, "/1/fader4", "f", deck1.get_position());
+		lo_send(address, "/1/fader3", "f", 1.0 - deck0.get_position());
+		lo_send(address, "/1/fader4", "f", 1.0 - deck1.get_position());
 		lo_send(address, "/1/fader5", "f", list.size()/(float)max_list);
 	}
 	if (REC) rec.write(rec_samples);
@@ -112,7 +112,7 @@ void set_random_flac(int i) {
 				deck0.delete_buffer();
 				deck0 = Play(filename.c_str());
 				deck0.set_loop(0);
-				lo_send(address, "/1/fader3", "f", 0.0);
+				lo_send(address, "/1/fader3", "f", 1.0);
 				lo_send(address, "/1/toggle3", "i", 1);
 				break;
 			case 1:
@@ -125,7 +125,7 @@ void set_random_flac(int i) {
 				deck1.delete_buffer();
 				deck1 = Play(filename.c_str());
 				deck1.set_loop(0);
-				lo_send(address, "/1/fader4", "f", 0.0);
+				lo_send(address, "/1/fader4", "f", 1.0);
 				lo_send(address, "/1/toggle4", "i", 1);
 				break;
 		}
