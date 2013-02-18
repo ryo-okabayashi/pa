@@ -11,22 +11,35 @@ using namespace std;
 
 class Play {
 	float *buffer;
+	int loop;
 	int frames, m;
 	double phase, speed, delta;
 public:
+	Play() {}
 	Play(const char *filename) {
+		cout << filename << endl;
 		SndfileHandle infile(filename, SFM_READ);
 		frames = infile.frames() * infile.channels();
 		buffer = new float[frames];
 		infile.readf(buffer, frames);
 		phase = 0;
 		speed = 1.0;
+		loop = 1;
 
-		cout << "file load: " << filename
-			<< " " << infile.frames() / SAMPLE_RATE << " sec." << endl;
+		cout << infile.frames() / SAMPLE_RATE << " sec." << endl;
+	}
+	void delete_buffer() {
+		delete buffer;
 	}
 	float out() {
-		if (phase >= frames) phase = 0;
+		if (!frames) return 0;
+		if (phase >= frames) {
+			if (loop) {
+				phase = 0;
+			} else {
+				return 0;
+			}
+		}
 		else phase = phase + speed;
 		if (phase < 0) phase = frames - 1;
 
@@ -49,6 +62,12 @@ public:
 	}
 	int get_frames() {
 		return frames;
+	}
+	float get_position() {
+		return phase / frames;
+	}
+	void set_loop(int i) {
+		loop = i;
 	}
 };
 
@@ -211,7 +230,7 @@ public:
 
 class Noise {
 public:
-	Noise() {};
+	Noise() {}
 	double val() {
 		return (double) rand() / (RAND_MAX * 0.5) - 1.0;
 	}
