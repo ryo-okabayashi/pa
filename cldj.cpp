@@ -24,7 +24,8 @@ Record rec;
 lo_address address = lo_address_new(OSC_SEND_IP, OSC_SEND_PORT);
 
 // DJ Deck
-vector<string> played;
+vector<string> list;
+int max_list;
 Play deck0;
 Play deck1;
 int deck0_play = 0;
@@ -68,13 +69,13 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	if (count%SAMPLE_RATE==0) {
 		lo_send(address, "/1/fader3", "f", deck0.get_position());
 		lo_send(address, "/1/fader4", "f", deck1.get_position());
-		lo_send(address, "/1/fader5", "f", count/(float)(SAMPLE_RATE*3600));
+		lo_send(address, "/1/fader5", "f", list.size()/(float)max_list);
 	}
 	if (REC) rec.write(rec_samples);
 	return 0;
 }
 
-string get_random_flac(const char * dirname) {
+void create_list(const char * dirname) {
 	DIR *dp;
 	struct stat st;
 	struct dirent *dir;
@@ -82,72 +83,52 @@ string get_random_flac(const char * dirname) {
 	vector<string> dirs;
 	vector<string> flacs;
 
-	// ディレクトリとflacファイル抽出
 	while ((dir = readdir(dp)) != NULL) {
 		if (dir->d_name[0] == '.') continue;
 		string path = string(dirname) + "/" + string(dir->d_name);
 		stat(path.c_str(), &st);
 		if (path.length() > 5 && path.substr(path.length() - 5) == ".flac") {
-			flacs.push_back(path);
+			list.push_back(path);
 		}
 		if ((st.st_mode & S_IFMT) == S_IFDIR) {
-			dirs.push_back(path);
+			create_list(path.c_str());
 		}
-	}
-
-	if (flacs.size() > 0) {
-		string pick = flacs[rand()%flacs.size()];
-		for(unsigned int i = 0; i < played.size(); i++) {
-			if (played[i] == pick) {
-				return "rescan";
-			}
-		}
-		played.push_back(pick);
-		return pick;
-	} else if (dirs.size() > 0) {
-		return get_random_flac(dirs[rand()%dirs.size()].c_str());
-	} else {
-		return (const char *) "rescan";
 	}
 }
 
 void set_random_flac(int i) {
-	int search = 1;
-	string filename;
-	while (search) {
-		filename = get_random_flac(MUSIC_DIR);
-		if (filename != "rescan") {
-			switch(i) {
-				case 0:
-					deck0_play = 0;
-					deck0_vol = 0.0;
-					lo_send(address, "/1/fader1", "f", 0.0);
-					lo_send(address, "/1/toggle1", "i", 0);
-					lo_send(address, "/1/toggle3", "i", 0);
+	if (list.size() > 0) {
+		int n = rand()%list.size();
+		string filename = list[n];
+		list.erase(list.begin() + n);
+		switch(i) {
+			case 0:
+				deck0_play = 0;
+				deck0_vol = 0.0;
+				lo_send(address, "/1/fader1", "f", 0.0);
+				lo_send(address, "/1/toggle1", "i", 0);
+				lo_send(address, "/1/toggle3", "i", 0);
 
-					deck0.delete_buffer();
-					deck0 = Play(filename.c_str());
-					deck0.set_loop(0);
-					lo_send(address, "/1/toggle3", "i", 1);
-					break;
-				case 1:
-					deck1_play = 0;
-					deck1_vol = 0.0;
-					lo_send(address, "/1/fader2", "f", 0.0);
-					lo_send(address, "/1/toggle2", "i", 0);
-					lo_send(address, "/1/toggle4", "i", 0);
+				deck0.delete_buffer();
+				deck0 = Play(filename.c_str());
+				deck0.set_loop(0);
+				lo_send(address, "/1/fader3", "f", 0.0);
+				lo_send(address, "/1/toggle3", "i", 1);
+				break;
+			case 1:
+				deck1_play = 0;
+				deck1_vol = 0.0;
+				lo_send(address, "/1/fader2", "f", 0.0);
+				lo_send(address, "/1/toggle2", "i", 0);
+				lo_send(address, "/1/toggle4", "i", 0);
 
-					deck1.delete_buffer();
-					deck1 = Play(filename.c_str());
-					deck1.set_loop(1);
-					lo_send(address, "/1/toggle4", "i", 1);
-					break;
-			}
-			search = 0;
-		} else {
-			cout << "rescanning..." << endl;
+				deck1.delete_buffer();
+				deck1 = Play(filename.c_str());
+				deck1.set_loop(0);
+				lo_send(address, "/1/fader4", "f", 0.0);
+				lo_send(address, "/1/toggle4", "i", 1);
+				break;
 		}
-		sleep(1);
 	}
 }
 
@@ -200,6 +181,9 @@ void* thread1(void *args)
 int main(void) {
 
 	srand(time(NULL));
+
+	create_list(MUSIC_DIR);
+	max_list = list.size();
 
 	PaStreamParameters outputParameters;
 	PaStream *stream;
