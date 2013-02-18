@@ -12,10 +12,10 @@
 #include <cstdlib>
 
 #define OSC_PORT "7770"
-#define OSC_SEND_IP "192.168.1.6"
+#define OSC_SEND_IP "192.168.11.4"
 #define OSC_SEND_PORT "9000"
 #define REC 0
-#define MUSIC_DIR "/home/ryo/Music"
+#define MUSIC_DIR "/home/ryo/music"
 
 unsigned long count = 0;
 Record rec;
@@ -67,9 +67,9 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		}
 	}
 	if (count%SAMPLE_RATE==0) {
-		lo_send(address, "/1/fader3", "f", 1.0 - deck0.get_position());
-		lo_send(address, "/1/fader4", "f", 1.0 - deck1.get_position());
-		lo_send(address, "/1/fader5", "f", list.size()/(float)max_list);
+		lo_send(address, "/1/rotary3", "f", 1.0 - deck0.get_position());
+		lo_send(address, "/1/rotary6", "f", 1.0 - deck1.get_position());
+		lo_send(address, "/1/rotary2", "f", list.size()/(float)max_list);
 	}
 	if (REC) rec.write(rec_samples);
 	return 0;
@@ -107,26 +107,26 @@ void set_random_flac(int i) {
 				deck0_vol = 0.0;
 				lo_send(address, "/1/fader1", "f", 0.0);
 				lo_send(address, "/1/toggle1", "i", 0);
-				lo_send(address, "/1/toggle3", "i", 0);
+				lo_send(address, "/1/toggle2", "i", 0);
 
 				deck0.delete_buffer();
 				deck0 = Play(filename.c_str());
 				deck0.set_loop(0);
-				lo_send(address, "/1/fader3", "f", 1.0);
-				lo_send(address, "/1/toggle3", "i", 1);
+				lo_send(address, "/1/rotary3", "f", 1.0);
+				lo_send(address, "/1/toggle1", "i", 1);
 				break;
 			case 1:
 				deck1_play = 0;
 				deck1_vol = 0.0;
 				lo_send(address, "/1/fader2", "f", 0.0);
-				lo_send(address, "/1/toggle2", "i", 0);
+				lo_send(address, "/1/toggle3", "i", 0);
 				lo_send(address, "/1/toggle4", "i", 0);
 
 				deck1.delete_buffer();
 				deck1 = Play(filename.c_str());
 				deck1.set_loop(0);
-				lo_send(address, "/1/fader4", "f", 1.0);
-				lo_send(address, "/1/toggle4", "i", 1);
+				lo_send(address, "/1/rotary6", "f", 1.0);
+				lo_send(address, "/1/toggle3", "i", 1);
 				break;
 		}
 	}
@@ -139,15 +139,15 @@ static int osc(const char *path, const char *types, lo_arg **argv, int argc, voi
 		deck0_vol = argv[0]->f;
 	} else if (string(path) == "/1/fader2") {
 		deck1_vol = argv[0]->f;
-	} else if (string(path) == "/1/toggle1") {
-		deck0_play = argv[0]->i;
 	} else if (string(path) == "/1/toggle2") {
+		deck0_play = argv[0]->i;
+	} else if (string(path) == "/1/toggle4") {
 		deck1_play = argv[0]->i;
-	} else if (string(path) == "/1/toggle3") {
+	} else if (string(path) == "/1/toggle1") {
 		if (argv[0]->i == 0) {
 			set_random_flac(0);
 		}
-	} else if (string(path) == "/1/toggle4") {
+	} else if (string(path) == "/1/toggle3") {
 		if (argv[0]->i == 0) {
 			set_random_flac(1);
 		}
@@ -218,12 +218,13 @@ int main(void) {
 	// reset
 	lo_send(address, "/1/fader1", "f", 0.0);
 	lo_send(address, "/1/fader2", "f", 0.0);
-	lo_send(address, "/1/fader3", "f", 0.0);
-	lo_send(address, "/1/fader4", "f", 0.0);
-	lo_send(address, "/1/toggle1", "i", 0);
+	lo_send(address, "/1/rotary2", "f", 0.0);
+	lo_send(address, "/1/rotary3", "f", 0.0);
+	lo_send(address, "/1/rotary6", "f", 0.0);
+	lo_send(address, "/1/toggle1", "i", 1);
 	lo_send(address, "/1/toggle2", "i", 0);
 	lo_send(address, "/1/toggle3", "i", 1);
-	lo_send(address, "/1/toggle4", "i", 1);
+	lo_send(address, "/1/toggle4", "i", 0);
 
 	e = Pa_Initialize();
 	err(e);
