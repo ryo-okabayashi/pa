@@ -3,8 +3,9 @@
 #include "portaudio.h"
 #include <cstdlib>
 #include <sndfile.hh>
+#include "iir_filter.h"
 
-#define SAMPLE_RATE (48000)
+#define SAMPLE_RATE (44100)
 #define FRAMES_PER_BUFFER (512)
 
 using namespace std;
@@ -84,6 +85,7 @@ public:
 	}
 };
 
+/*
 class Filter {
 	double cutoff;
 	double resonance;
@@ -117,6 +119,45 @@ public:
 	Filter &set_cutoff(double co) {
 		cutoff = co;
 		return *this;
+	}
+};
+*/
+
+class Filter {
+public:
+	double a[3], b[3], in[2], out[2];
+	double io(double input) {
+
+		double output = b[0]*input + b[1]*in[0] + b[2]*in[1] - a[1]*out[0] - a[2]*out[1];
+
+		in[1] = in[0];
+		in[0] = input;
+		out[1] = out[0];
+		out[0] = output;
+
+		return output;
+	}
+};
+
+class LPF : public Filter {
+public:
+	/* q = 0.2~2.0 */
+	LPF(double cutoff, double q) {
+		in[0] = in[1] = out[0] = out[1] = 0;
+		cutoff = cutoff / (double)SAMPLE_RATE;
+		q = q / sqrt(2);
+		IIR_LPF(cutoff, q, a, b);
+	}
+};
+
+class HPF : public Filter {
+public:
+	/* q = 0.2~2.0 */
+	HPF(double cutoff, double q) {
+		in[0] = in[1] = out[0] = out[1] = 0;
+		cutoff = cutoff / (double)SAMPLE_RATE;
+		q = q / sqrt(2);
+		IIR_HPF(cutoff, q, a, b);
 	}
 };
 
@@ -341,9 +382,8 @@ public:
 
 class Delay {
 	int in_index, m;
-	double out_index, delta;
+	double delay_time, out_index, delta, feedback, output;
 	float buffer[SAMPLE_RATE];
-	float delay_time, feedback, output;
 public:
 	Delay(float dt, float fb) {
 		delay_time = dt;
@@ -353,14 +393,13 @@ public:
 		}
 		in_index = 0;
 	}
-	float io(float in) {
+	double io(double in) {
 
 		if (in_index >= SAMPLE_RATE) in_index = 0;
 
 		out_index = in_index - ((double)SAMPLE_RATE * delay_time);
 		if (out_index < 0) out_index = (double)(SAMPLE_RATE-1) + out_index;
 
-		// 線形補間
 		m = (int) out_index;
 		delta = out_index - (double) m;
 		output = (float) (delta * buffer[m+1] + (1.0 - delta) * buffer[m]);
@@ -370,8 +409,9 @@ public:
 		in_index++;
 		return output;
 	}
-	Delay &set_delay_time(float f) {
+	Delay &set_delay_time(double f) {
 		delay_time = f;
 		return *this;
 	}
 };
+
