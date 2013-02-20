@@ -46,7 +46,6 @@ public:
 
 		// return buffer[(int)phase];
 
-		// 線形補間
 		m = (int) phase;
 		delta = phase - (double) m;
 		return delta * buffer[m+1] + (1.0 - delta) * buffer[m];
@@ -402,7 +401,7 @@ public:
 
 		m = (int) out_index;
 		delta = out_index - (double) m;
-		output = (float) (delta * buffer[m+1] + (1.0 - delta) * buffer[m]);
+		output = (float) (delta * buffer[m+1] + (1.0 - delta) * buffer[m]); // TODO m+1がサイズ外になる場合がある？
 
 		buffer[in_index] = output * feedback + in;
 

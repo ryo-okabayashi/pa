@@ -1,5 +1,5 @@
 #include "pa.h"
-#include "fltk.h"
+//#include "fltk.h"
 #include <signal.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -13,7 +13,8 @@ unsigned long count = 0;
 Record rec;
 
 // synth
-Sine sine(440);
+Saw saw(200);
+LPF lpf(200, 1.0);
 
 // pa callback
 static int paCallback( const void *inputBuffer, void *outputBuffer,
@@ -22,22 +23,23 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	PaStreamCallbackFlags statusFlags,
 	void *userData )
 {
+	double left, right;
 	float *out = (float*)outputBuffer;
-	float left, right;
 	float rec_samples[FRAMES_PER_BUFFER*2];
 	unsigned int i, rec_i = 0;
 	(void) inputBuffer; /* Prevent unused variable warning. */
 	for( i=0; i<framesPerBuffer; i++ )
 	{
-		left = sine.val() * 0.5;
+		left = (float) lpf.io(saw.val());
+		//left = (float) saw.val() * 0.5;
 		right = left;
 
-		*out++ = left;
-		*out++ = right;
+		*out++ = (float) left;
+		*out++ = (float) right;
 		count++;
 		if (REC) {
-			rec_samples[rec_i++] = left;
-			rec_samples[rec_i++] = right;
+			rec_samples[rec_i++] = (float) left;
+			rec_samples[rec_i++] = (float) right;
 		}
 	}
 	if (REC) rec.write(rec_samples);
@@ -47,7 +49,9 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 // OSC
 static int osc(const char *path, const char *types, lo_arg **argv, int argc, void *data, void *user_data)
 {
-	sine.freq((float)argv[0]->i);
+	cout << path << ": "
+		<< argv[0]->f << endl;
+	//sine.freq((float)argv[0]->i);
 	return 0;
 }
 
@@ -76,6 +80,7 @@ int main(void) {
 	signal(SIGINT, signal_catch);
 
 	// GUI
+	/*
 	pthread_t thread;
 	pthread_attr_t thread_attr;
 	pthread_attr_init(&thread_attr);
@@ -84,13 +89,15 @@ int main(void) {
 		perror("pthrad create error");
 	}
 	pthread_join(thread, NULL);
+	*/
 
 	if (REC) rec.prepare();
 
 	// OSC
 	lo_server_thread server;
 	server = lo_server_thread_new(OSC_PORT, NULL);
-	lo_server_thread_add_method(server, "/pa", "i", osc, NULL);
+	lo_server_thread_add_method(server, "/1/fader1", "f", osc, NULL);
+	lo_server_thread_add_method(server, "/1/fader2", "f", osc, NULL);
 	lo_server_thread_start(server);
 
 	e = Pa_Initialize();
@@ -131,7 +138,14 @@ int main(void) {
 	e = Pa_StartStream(stream);
 	err(e);
 
-	pthread_exit(NULL);
+	int c;
+	while ((c = getchar())) {
+		if (c == 'q') {
+			break;
+		}
+	}
+
+	//pthread_exit(NULL);
 
 	e = Pa_StopStream(stream);
 	err(e);
