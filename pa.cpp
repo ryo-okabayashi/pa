@@ -1,9 +1,10 @@
 #include "pa.h"
-//#include "fltk.h"
+#include "fft.h"
 #include <signal.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <lo/lo.h>
+#include <ncurses.h>
 using namespace std;
 
 #define OSC_PORT "7770"
@@ -12,9 +13,14 @@ using namespace std;
 unsigned long count = 0;
 Record rec;
 
+// FFT
+const int N = 64;
+double x_real[N];
+double x_imag[N];
+float fft_samples[FRAMES_PER_BUFFER];
+
 // synth
-Saw saw(200);
-LPF lpf(200, 1.0);
+Sine sine(440);
 
 // pa callback
 static int paCallback( const void *inputBuffer, void *outputBuffer,
@@ -30,19 +36,20 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	(void) inputBuffer; /* Prevent unused variable warning. */
 	for( i=0; i<framesPerBuffer; i++ )
 	{
-		left = (float) lpf.io(saw.val());
-		//left = (float) saw.val() * 0.5;
+		left = sine.val();
 		right = left;
 
+		fft_samples[i] = left;
 		*out++ = (float) left;
 		*out++ = (float) right;
-		count++;
 		if (REC) {
 			rec_samples[rec_i++] = (float) left;
 			rec_samples[rec_i++] = (float) right;
 		}
+		count++;
 	}
 	if (REC) rec.write(rec_samples);
+
 	return 0;
 }
 
@@ -52,6 +59,41 @@ static int osc(const char *path, const char *types, lo_arg **argv, int argc, voi
 	cout << path << ": "
 		<< argv[0]->f << endl;
 	//sine.freq((float)argv[0]->i);
+	return 0;
+}
+
+void* draw(void *args)
+{
+	while(1) {
+
+		clear();
+
+		for (int n = 0; n < N; n++)
+		{
+			x_real[n] = fft_samples[n];
+			x_imag[n] = 0.0;
+		}
+
+		FFT(x_real, x_imag, N);
+
+		init_pair(1, COLOR_CYAN, COLOR_BLACK);
+		attron(COLOR_PAIR(1));
+		for (int k = 0; k < N/2; k++)
+		{
+			//printw("%d %f+j%f\n", k, x_real[k], x_imag[k]);
+			int num = abs((int)x_real[k]) + abs((int)x_imag[k]);
+			for (int i = 0; i < num+1; i++) {
+				addch(' '|A_REVERSE);
+			}
+			printw("\n");
+		}
+		attroff(COLOR_PAIR(1));
+
+		printw("playing %d sec.\n", count/SAMPLE_RATE);
+		refresh();
+
+		sleep(1);
+	}
 	return 0;
 }
 
@@ -78,18 +120,6 @@ int main(void) {
 	PaError e;
 
 	signal(SIGINT, signal_catch);
-
-	// GUI
-	/*
-	pthread_t thread;
-	pthread_attr_t thread_attr;
-	pthread_attr_init(&thread_attr);
-	pthread_attr_setdetachstate(&thread_attr, PTHREAD_CREATE_DETACHED);
-	if(pthread_create(&thread, &thread_attr, thread1, NULL) != 0) {
-		perror("pthrad create error");
-	}
-	pthread_join(thread, NULL);
-	*/
 
 	if (REC) rec.prepare();
 
@@ -138,12 +168,23 @@ int main(void) {
 	e = Pa_StartStream(stream);
 	err(e);
 
+	initscr();
+	start_color();
+	pthread_t thread;
+	pthread_attr_t thread_attr;
+	pthread_attr_init(&thread_attr);
+	pthread_attr_setdetachstate(&thread_attr, PTHREAD_CREATE_DETACHED);
+	pthread_create(&thread, &thread_attr, draw, NULL);
+	pthread_join(thread, NULL);
+
 	int c;
-	while ((c = getchar())) {
+	while ((c = getch())) {
 		if (c == 'q') {
 			break;
 		}
 	}
+
+	endwin();
 
 	//pthread_exit(NULL);
 
