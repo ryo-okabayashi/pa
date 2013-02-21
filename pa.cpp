@@ -36,7 +36,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	(void) inputBuffer; /* Prevent unused variable warning. */
 	for( i=0; i<framesPerBuffer; i++ )
 	{
-		left = sine.val();
+		left = sine.val() * 0.5;
 		right = left;
 
 		fft_samples[i] = left;
@@ -68,26 +68,40 @@ void* draw(void *args)
 
 		clear();
 
+		float vol = 0;
+
 		for (int n = 0; n < N; n++)
 		{
 			x_real[n] = fft_samples[n];
 			x_imag[n] = 0.0;
+			if (fft_samples[n] > vol) vol = fft_samples[n];
 		}
 
 		FFT(x_real, x_imag, N);
 
-		init_pair(1, COLOR_CYAN, COLOR_BLACK);
-		attron(COLOR_PAIR(1));
+		printw("test\n");
 		for (int k = 0; k < N/2; k++)
 		{
 			//printw("%d %f+j%f\n", k, x_real[k], x_imag[k]);
 			int num = abs((int)x_real[k]) + abs((int)x_imag[k]);
 			for (int i = 0; i < num+1; i++) {
+				if (i == num) attron(COLOR_PAIR(2));
+				else attron(COLOR_PAIR(1));
 				addch(' '|A_REVERSE);
+				attroff(COLOR_PAIR(0));
 			}
 			printw("\n");
 		}
-		attroff(COLOR_PAIR(1));
+
+		vol = (int)(vol*50);
+		for (int i = 0; i < vol; i++) {
+			if (i >= 48) attron(COLOR_PAIR(4));
+			else if (i >= 40) attron(COLOR_PAIR(2));
+			else attron(COLOR_PAIR(3));
+			addch(' '|A_REVERSE);
+			attroff(COLOR_PAIR(3));
+		}
+		printw("\n");
 
 		printw("playing %d sec.\n", count/SAMPLE_RATE);
 		refresh();
@@ -170,6 +184,10 @@ int main(void) {
 
 	initscr();
 	start_color();
+	init_pair(1, COLOR_CYAN, COLOR_BLACK);
+	init_pair(2, COLOR_YELLOW, COLOR_BLACK);
+	init_pair(3, COLOR_GREEN, COLOR_BLACK);
+	init_pair(4, COLOR_RED, COLOR_BLACK);
 	pthread_t thread;
 	pthread_attr_t thread_attr;
 	pthread_attr_init(&thread_attr);
