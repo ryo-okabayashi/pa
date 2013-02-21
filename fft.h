@@ -30,7 +30,7 @@ int pow2(int x) /* y = 2 ^ x */
 
 void FFT(double x_real[], double x_imag[], int N)
 {
-  int i, j, k, n, m, r, stage, number_of_stage, index[N];
+  int i, j, k, n, m, r, stage, number_of_stage, *index;
   double a_real, a_imag, b_real, b_imag, c_real, c_imag, real, imag;
   
   /* FFTの段数 */
@@ -71,6 +71,7 @@ void FFT(double x_real[], double x_imag[], int N)
   }
   
   /* インデックスの並び替えのためのテーブルの作成 */
+  index = (int *)calloc(N, sizeof(int));
   for (stage = 1; stage <= number_of_stage; stage++)
   {
     for (i = 0; i < pow2(stage - 1); i++)
@@ -93,11 +94,12 @@ void FFT(double x_real[], double x_imag[], int N)
     }
   }
   
+  free(index);
 }
 
 void IFFT(double x_real[], double x_imag[], int N)
 {
-  int i, j, k, n, m, r, stage, number_of_stage, index[N];
+  int i, j, k, n, m, r, stage, number_of_stage, *index;
   double a_real, a_imag, b_real, b_imag, c_real, c_imag, real, imag;
   
   /* IFFTの段数 */
@@ -138,6 +140,7 @@ void IFFT(double x_real[], double x_imag[], int N)
   }
   
   /* インデックスの並び替えのためのテーブルの作成 */
+  index = (int *)calloc(N, sizeof(int));
   for (stage = 1; stage <= number_of_stage; stage++)
   {
     for (i = 0; i < pow2(stage - 1); i++)
@@ -167,4 +170,5 @@ void IFFT(double x_real[], double x_imag[], int N)
     x_imag[k] /= N;
   }
   
+  free(index);
 }

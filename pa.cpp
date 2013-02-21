@@ -21,6 +21,8 @@ float fft_samples[FRAMES_PER_BUFFER];
 
 // synth
 Sine sine(440);
+Sine sine1(1000);
+Sine sine2(5000);
 
 // pa callback
 static int paCallback( const void *inputBuffer, void *outputBuffer,
@@ -36,7 +38,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	(void) inputBuffer; /* Prevent unused variable warning. */
 	for( i=0; i<framesPerBuffer; i++ )
 	{
-		left = sine.val() * 0.5;
+		left = (sine.val() + sine1.val() + sine2.val()) * 0.3;
 		right = left;
 
 		fft_samples[i] = left;
@@ -79,26 +81,26 @@ void* draw(void *args)
 
 		FFT(x_real, x_imag, N);
 
-		printw("test\n");
-		for (int k = 0; k < N/2; k++)
+		for (int k = 0; k < 10; k++)
 		{
 			//printw("%d %f+j%f\n", k, x_real[k], x_imag[k]);
 			int num = abs((int)x_real[k]) + abs((int)x_imag[k]);
 			for (int i = 0; i < num+1; i++) {
 				if (i == num) attron(COLOR_PAIR(2));
 				else attron(COLOR_PAIR(1));
-				addch(' '|A_REVERSE);
+				//addch(' '|A_REVERSE);
+				addch('|');
 				attroff(COLOR_PAIR(0));
 			}
 			printw("\n");
 		}
 
-		vol = (int)(vol*50);
+		vol = (int)(vol*30);
 		for (int i = 0; i < vol; i++) {
-			if (i >= 48) attron(COLOR_PAIR(4));
-			else if (i >= 40) attron(COLOR_PAIR(2));
+			if (i >= 25) attron(COLOR_PAIR(4));
+			else if (i >= 20) attron(COLOR_PAIR(2));
 			else attron(COLOR_PAIR(3));
-			addch(' '|A_REVERSE);
+			addch('|');
 			attroff(COLOR_PAIR(3));
 		}
 		printw("\n");

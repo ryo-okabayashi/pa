@@ -30,6 +30,8 @@ Play deck0;
 Play deck1;
 int deck0_play = 0;
 int deck1_play = 0;
+float deck0_amp = 0.0;
+float deck1_amp = 0.0;
 float deck0_vol = 0.0;
 float deck1_vol = 0.0;
 
@@ -43,6 +45,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	float *out = (float*)outputBuffer;
 	float left, right;
 	float rec_samples[FRAMES_PER_BUFFER*2];
+	float deck0_out[2], deck1_out[2];
 	unsigned int i, rec_i = 0;
 	(void) inputBuffer; /* Prevent unused variable warning. */
 	for( i=0; i<framesPerBuffer; i++ )
@@ -50,27 +53,42 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		left = 0;
 		right = 0;
 		if (deck0_play) {
-			left += deck0.out()*deck0_vol * 0.5;
-			right += deck0.out()*deck0_vol * 0.5;
+			deck0_out[0] = deck0.out();
+			deck0_out[1] = deck0.out();
+			left += deck0_out[0]*deck0_amp * 0.5;
+			right += deck0_out[1]*deck0_amp * 0.5;
+			if (deck0_vol < deck0_out[0]) deck0_vol = deck0_out[0];
 		}
 		if (deck1_play) {
-			left += deck1.out()*deck1_vol * 0.5;
-			right += deck1.out()*deck1_vol * 0.5;
+			deck1_out[0] = deck1.out();
+			deck1_out[1] = deck1.out();
+			left += deck1_out[0]*deck1_amp * 0.5;
+			right += deck1_out[1]*deck1_amp * 0.5;
+			if (deck1_vol < deck1_out[0]) deck1_vol = deck1_out[0];
 		}
 
 		*out++ = left;
 		*out++ = right;
-		count++;
 		if (REC) {
 			rec_samples[rec_i++] = left;
 			rec_samples[rec_i++] = right;
 		}
+
+		if (count%SAMPLE_RATE==0) {
+			lo_send(address, "/1/rotary3", "f", 1.0 - deck0.get_position());
+			lo_send(address, "/1/rotary6", "f", 1.0 - deck1.get_position());
+			lo_send(address, "/1/fader3", "f", list.size()/(float)max_list);
+		}
+		if (count%(int)(SAMPLE_RATE*0.1)==0) {
+			lo_send(address, "/1/rotary2", "f", deck0_vol);
+			lo_send(address, "/1/rotary5", "f", deck1_vol);
+			deck0_vol *= 0.9;
+			deck1_vol *= 0.9;
+		}
+
+		count++;
 	}
-	if (count%SAMPLE_RATE==0) {
-		lo_send(address, "/1/rotary3", "f", 1.0 - deck0.get_position());
-		lo_send(address, "/1/rotary6", "f", 1.0 - deck1.get_position());
-		lo_send(address, "/1/rotary2", "f", list.size()/(float)max_list);
-	}
+
 	if (REC) rec.write(rec_samples);
 	return 0;
 }
@@ -104,7 +122,7 @@ void set_random_flac(int i) {
 		switch(i) {
 			case 0:
 				deck0_play = 0;
-				deck0_vol = 0.0;
+				deck0_amp = 0.0;
 				lo_send(address, "/1/fader1", "f", 0.0);
 				lo_send(address, "/1/toggle1", "i", 0);
 				lo_send(address, "/1/toggle2", "i", 0);
@@ -117,7 +135,7 @@ void set_random_flac(int i) {
 				break;
 			case 1:
 				deck1_play = 0;
-				deck1_vol = 0.0;
+				deck1_amp = 0.0;
 				lo_send(address, "/1/fader2", "f", 0.0);
 				lo_send(address, "/1/toggle3", "i", 0);
 				lo_send(address, "/1/toggle4", "i", 0);
@@ -136,9 +154,9 @@ void set_random_flac(int i) {
 static int osc(const char *path, const char *types, lo_arg **argv, int argc, void *data, void *user_data)
 {
 	if (string(path) == "/1/fader1") {
-		deck0_vol = argv[0]->f;
+		deck0_amp = argv[0]->f;
 	} else if (string(path) == "/1/fader2") {
-		deck1_vol = argv[0]->f;
+		deck1_amp = argv[0]->f;
 	} else if (string(path) == "/1/toggle2") {
 		deck0_play = argv[0]->i;
 	} else if (string(path) == "/1/toggle4") {
