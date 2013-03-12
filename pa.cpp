@@ -8,7 +8,7 @@
 using namespace std;
 
 #define OSC_PORT "7770"
-#define REC 1
+#define REC 0
 
 unsigned long count = 0;
 Record rec;
@@ -19,10 +19,79 @@ double x_real[N];
 double x_imag[N];
 float fft_samples[FRAMES_PER_BUFFER];
 
-// synth
-Sine sine(440);
-Sine sine1(1000);
-Sine sine2(5000);
+// !!! synth !!!
+const int num = 10;
+Sine sines[num];
+AR ars[num];
+
+Sine kick;
+Line kick_freq(380, 100, 0.02);
+AR env_kick(0, 1, 0.001, 0, 0.099);
+
+Saw bass(70);
+int bass_i = 0;
+int bass_freqs[] = {70,0,70,75,0,0,80,0};
+AR env_bass(0, 1, 0.0001, 0, 0.2);
+LPF fil_bass(400, 1.0);
+
+Sine s0;
+int s0_i = 0;
+int s0_freq[8];
+AR env_s0(0, 1, 0.001, 0, 0.01);
+
+Sine s1(12000);
+Line env_s1(1, 0, 0.01);
+
+void init() {
+	srand(time(NULL));
+	for (int i = 0; i < 8; i++) {
+		s0_freq[i] = rand()%5000+500;
+	}
+}
+
+void play(double &left, double &right) {
+	if (count%(int)(SAMPLE_RATE*0.8)==0) {
+		kick_freq.reset();
+		env_kick.reset();
+	} else if (count%(int)(SAMPLE_RATE*0.1)==0 && rand()%16==0) {
+		kick_freq.reset();
+		env_kick.reset();
+	}
+	if (count%(int)(SAMPLE_RATE*0.1)==0) {
+		if (bass_i > 7) bass_i = 0;
+		if (bass_freqs[bass_i] > 0) {
+			bass.freq(bass_freqs[bass_i]);
+			env_bass.reset();
+		}
+		bass_i++;
+	}
+	left += kick.freq(kick_freq.val()).val() * env_kick.val() * 0.5;
+	left+= fil_bass.io(bass.val()) * env_bass.val() * 0.5;
+
+	if (count%(int)(SAMPLE_RATE*0.1)==0) {
+		if (s0_i > 7) s0_i = 0;
+		s0.freq(s0_freq[s0_i++]);
+		env_s0.reset();
+
+		if (rand()%2==0) {
+			env_s1.reset();
+		}
+	}
+	left += s0.val() * env_s0.val() * 0.2;
+	left += s1.val() * env_s1.val() * 0.1;
+
+	for (int n = 0; n < num; n++) {
+		if (ars[n].done()) {
+			sines[n].freq(rand()%1000+100);
+			ars[n].set(0, 1, rand()%1000*0.01, 0, rand()%1000*0.01);
+		}
+	}
+	for (int n = 0; n < num; n++) {
+		left += sines[n].val() * ars[n].val() * 0.02;
+	}
+	right = left;
+}
+// ___ synth ___ 
 
 // pa callback
 static int paCallback( const void *inputBuffer, void *outputBuffer,
@@ -38,8 +107,8 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	(void) inputBuffer; /* Prevent unused variable warning. */
 	for( i=0; i<framesPerBuffer; i++ )
 	{
-		left = (sine.val() + sine1.val() + sine2.val()) * 0.3;
-		right = left;
+		left = right = 0;
+		play(left, right);
 
 		fft_samples[i] = left;
 		*out++ = (float) left;
@@ -150,7 +219,6 @@ int main(void) {
 	err(e);
 
 	// devices
-	/*
 	int numDevices = Pa_GetDeviceCount();
 	const PaDeviceInfo *deviceInfo;
 	for (int i = 0; i < numDevices; i++) {
@@ -158,7 +226,6 @@ int main(void) {
 		const PaHostApiInfo *hostInfo = Pa_GetHostApiInfo( deviceInfo->hostApi );
 		cout << i << ": " << hostInfo->name << endl;
 	}
-	*/
 
 	outputParameters.device = Pa_GetDefaultOutputDevice();
 	if (outputParameters.device == paNoDevice) {
@@ -180,6 +247,8 @@ int main(void) {
 			paCallback,
 			NULL );
 	err(e);
+
+	init();
 
 	e = Pa_StartStream(stream);
 	err(e);

@@ -328,9 +328,15 @@ class AR {
 	Line a;
 	Line r;
 public:
+	AR() {}
 	AR(double from, double to1, double dur1, double to2, double dur2) {
 		a.set(from, to1, dur1);
 		r.set(to1, to2, dur2);
+	}
+	AR &set(double from, double to1, double dur1, double to2, double dur2) {
+		a.set(from, to1, dur1);
+		r.set(to1, to2, dur2);
+		return *this;
 	}
 	double val() {
 		if (a.done()) {
@@ -341,6 +347,9 @@ public:
 	void reset() {
 		a.reset();
 		r.reset();
+	}
+	bool done() {
+		return r.done();
 	}
 };
 
@@ -375,7 +384,7 @@ public:
 		r.set(to2, to3, dur3);
 	}
 	bool done() {
-		return (r.done());
+		return r.done();
 	}
 };
 
